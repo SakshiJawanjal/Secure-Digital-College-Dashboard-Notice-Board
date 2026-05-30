@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>College Dashboard - Full Day Schedule</title>
+    <style>
+        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; }
+        .grid { display: grid; grid-template-columns: 2.5fr 1fr; gap: 20px; }
+        .box { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #334155; padding: 12px; text-align: left; }
+        th { background-color: #0f172a; color: #38bdf8; }
+        td[contenteditable="true"] { background: #1e3a8a; outline: 1px solid #38bdf8; }
+        .time-col { font-weight: bold; color: #94a3b8; width: 150px; }
+        .break-row { background-color: rgba(74, 222, 128, 0.1) !important; color: #4ade80; text-align: center; font-weight: bold; letter-spacing: 1px; }
+        .btn { background: #38bdf8; color: #000; padding: 10px 15px; border: none; cursor: pointer; font-weight: bold; border-radius: 4px; }
+        .notice { background: rgba(255,255,255,0.05); padding: 10px; margin-top: 10px; border-left: 4px solid #38bdf8; }
+    </style>
+</head>
+<body>
+
+    <div style="margin-bottom: 20px; background: #1e3a8a; padding: 15px; border-radius: 8px;">
+        <h2>College Monitor Panel</h2>
+        <p>Current Mode: <strong id="status" style="color:#ef4444;">🔒 Student View (Locked)</strong></p>
+        <button class="btn" onclick="unlockBoard()">🔑 Click to Edit (Password: admin123)</button>
+    </div>
+
+    <div class="grid">
+        <!-- Timetable Section -->
+        <div class="box">
+            <h3>📅 Weekly Timetable (10:00 AM - 04:30 PM)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Monday</th>
+                        <th>Tuesday</th>
+                        <th>Wednesday</th>
+                        <th>Thursday</th>
+                        <th>Friday</th>
+                    </tr>
+                </thead>
+                <tbody id="timetableBody">
+                    <!-- JavaScript automatically loads the full daily schedule here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Notice Board Section -->
+        <div class="box">
+            <h3>📢 Notice Board</h3>
+            <div id="adminPanel" style="display:none; margin-bottom:15px;">
+                <input type="text" id="newNotice" placeholder="Type notice..." style="padding:8px; width:65%; background:#0f172a; color:white; border:1px solid #334155; border-radius:4px;">
+                <button onclick="addNotice()" style="padding:8px; background:#4ade80; border:none; font-weight:bold; border-radius:4px; cursor:pointer;">Post</button>
+            </div>
+            <div id="noticeContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // Pre-filled matrix with completely different subjects for every single day
+        const defaultFullTimetable = [
+            ["10:00 - 11:00", "Maths", "Physics", "Chemistry", "Biology", "Algebra"],
+            ["11:00 - 12:00", "English", "Marathi", "Hindi", "English", "History"],
+            ["12:00 - 01:00", "Science", "Geometry", "History", "Geography", "EVS"],
+            ["01:00 - 01:30", "BREAK", "BREAK", "BREAK", "BREAK", "BREAK"],
+            ["01:30 - 02:30", "History", "English", "Marathi", "Maths", "Physics"],
+            ["02:30 - 03:30", "Geography", "Chemistry", "Physics", "Hindi", "Marathi"],
+            ["03:30 - 04:30", "Marathi", "Geography", "Science", "Social Study", "Computer Science"]
+        ];
+
+        // Fetch saved timetable or load the new structure above
+        let timetableData = JSON.parse(localStorage.getItem('fullCollegeTimetable')) || defaultFullTimetable;
+        let notices = JSON.parse(localStorage.getItem('testNotices')) || ["Welcome to campus dashboard system."];
+        let isEditingEnabled = false;
+
+        function buildTimetableGrid() {
+            const tbody = document.getElementById('timetableBody');
+            tbody.innerHTML = '';
+
+            timetableData.forEach((row, rowIndex) => {
+                const tr = document.createElement('tr');
+                
+                // If it is the 1:00 PM row, style it visually as a break span
+                if (row[1] === "BREAK") {
+                    tr.className = "break-row";
+                    tr.innerHTML = `<td class="time-col">${row[0]}</td><td colspan="5">LUNCH / RECESS BREAK</td>`;
+                } else {
+                    row.forEach((cellText, colIndex) => {
+                        const td = document.createElement('td');
+                        td.innerText = cellText;
+                        
+                        if (colIndex === 0) {
+                            td.className = "time-col";
+                        } else {
+                            td.className = "editcell";
+                            // If unlocked, grant editing permissions
+                            if (isEditingEnabled) {
+                                td.contentEditable = "true";
+                                td.onblur = () => {
+                                    timetableData[rowIndex][colIndex] = td.innerText;
+                                    localStorage.setItem('fullCollegeTimetable', JSON.stringify(timetableData));
+                                };
+                            }
+                        }
+                        tr.appendChild(td);
+                    });
+                }
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateNotices() {
+            const container = document.getElementById('noticeContainer');
+            container.innerHTML = '';
+            notices.forEach(n => {
+                container.innerHTML += `<div class="notice">${n}</div>`;
+            });
+        }
+
+        function unlockBoard() {
+            let p = prompt("Enter Admin Password:");
+            if(p === "admin123") {
+                isEditingEnabled = true;
+                document.getElementById('status').innerText = "🔓 Admin Mode (Editing Unlocked)";
+                document.getElementById('status').style.color = "#4ade80";
+                document.getElementById('adminPanel').style.display = "block";
+                
+                // Rebuild grid to apply the contentEditable fields
+                buildTimetableGrid();
+                alert("Unlocked successfully! Click on any subject cell to change it instantly.");
+            } else {
+                alert("Wrong password access denied.");
+            }
+        }
+
+        function addNotice() {
+            let txt = document.getElementById('newNotice').value;
+            if(txt) {
+                notices.unshift(txt);
+                localStorage.setItem('testNotices', JSON.stringify(notices));
+                updateNotices();
+                document.getElementById('newNotice').value = '';
+            }
+        }
+
+        // Initialize display layouts
+        buildTimetableGrid();
+        updateNotices();
+    </script>
+</body>
+</html>
+
